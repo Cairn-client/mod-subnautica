@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "id": "subnautica",
+  "name": "Subnautica",
+  "developer": "Unknown Worlds Entertainment",
+  "franchise": "Subnautica",
+  "steamAppId": 264710,
+  "exe": "Subnautica.exe",
+  "description": "Dive into the alien ocean with friends. Nitrox puts several players in the same Subnautica world: the same reefs, bases, vehicles and creatures, with one player hosting the server.",
+  "accent": "#2FA7C9",
+  "images": {
+    "background": "subnautica.jpg",
+    "logo": "subnautica-logo.png",
+    "hero": "subnautica-hero.jpg",
+    "poster": "subnautica-poster.jpg",
+    "screenshots": [ "subnautica-shot-1.jpg", "subnautica-shot-2.jpg" ]
+  },
+  "ownSession": true,
+  "setup": [
+    { "kind": "steam-running" },
+    { "kind": "steam-app", "appId": 264710, "title": "Subnautica", "detail": "Install Subnautica from your Steam library." },
+    { "kind": "game-found" },
+    { "kind": "mod-installed", "detail": "Download the mod above: Cairn puts Nitrox in the game's folder." }
+  ],
+  "hostSteps": [
+    "Download the mod above. Cairn puts Nitrox in the game's folder and keeps it up to date.",
+    "Press Play: Nitrox's own window opens. Create a server there, choose its game mode and start it.",
+    "Share your address with your friends. The server's port (11000) must be open on your router, or use a VPN you share.",
+    "Choose your server in Nitrox and press Start to play."
+  ],
+  "joinSteps": [
+    "Download the mod above, the same version as the host's, then press Play to open Nitrox.",
+    "Choose Multiplayer, add the host's address and press Join.",
+    "Pick your player name and start: you arrive in the host's world."
+  ],
+  "features": [
+    { "title": "Sessions", "items": [
+      { "name": "Host and join", "detail": "One player hosts a Nitrox server and friends join by address. Everyone needs the same version of the mod.", "status": "inTest" },
+      { "name": "Kept up to date", "detail": "Cairn installs Nitrox in the game's folder and updates it when a new version is released." }
+    ] },
+    { "title": "World", "items": [
+      { "name": "One ocean", "detail": "Players share the world, bases, vehicles and creatures.", "status": "inTest" },
+      { "name": "Players", "detail": "Each player is seen by the others, with their own inventory and progress.", "status": "inTest" }
+    ] }
+  ]
+}
