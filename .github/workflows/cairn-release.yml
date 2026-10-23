@@ -1,0 +1,72 @@
+name: Cairn release
+
+# A Cairn release is a bare X.Y.Z tag on master. It takes the upstream release this fork is pinned to (UPSTREAM.md: the release and its
+# sha256), puts it into a Cairn mod pack (.github/cairn/Build-Pack.ps1) and publishes the pack, pack-index.json and game.json: the Cairn
+# launcher reads the index to install and update this mod. RELEASE_CHANNEL=beta publishes a pre-release (only players who chose beta are offered it).
+# Run by hand (workflow_dispatch) it builds the pack and keeps it as an artifact, and publishes nothing.
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pack:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: The tag must be on master and equal VERSION
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          git fetch origin master
+          git merge-base --is-ancestor $env:GITHUB_SHA origin/master
+          if ($LASTEXITCODE -ne 0) { throw "tag $env:GITHUB_REF_NAME is not on master" }
+          $v = (Get-Content VERSION -TotalCount 1).Trim()
+          if ($v -ne $env:GITHUB_REF_NAME) { throw "tag $env:GITHUB_REF_NAME is not VERSION ($v)" }
+
+      - name: Download the upstream release this fork is pinned to
+        id: upstream
+        shell: pwsh
+        run: |
+          $pin = @{}
+          foreach ($l in Get-Content UPSTREAM.md) { if ($l -match '^(upstream-release|upstream-url|upstream-sha256):\s*(\S+)') { $pin[$Matches[1]] = $Matches[2] } }
+          foreach ($k in 'upstream-release', 'upstream-url', 'upstream-sha256') { if (-not $pin[$k]) { throw "UPSTREAM.md has no $k" } }
+          Invoke-WebRequest $pin['upstream-url'] -OutFile upstream.zip -UseBasicParsing
+          $h = (Get-FileHash upstream.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($h -ne $pin['upstream-sha256']) { throw "upstream.zip is $h, UPSTREAM.md says $($pin['upstream-sha256'])" }
+          Expand-Archive upstream.zip upstream -Force
+          "version=$($pin['upstream-release'])" >> $env:GITHUB_OUTPUT
+
+      - name: Build the pack
+        shell: pwsh
+        env:
+          UPSTREAM_VERSION: ${{ steps.upstream.outputs.version }}
+        run: ./.github/cairn/Build-Pack.ps1 -SourceDir upstream -UpstreamVersion $env:UPSTREAM_VERSION
+
+      - name: Changelog
+        shell: pwsh
+        run: ./.github/cairn/New-ReleaseNotes.ps1 -OutFile notes.md -Tag $env:GITHUB_REF_NAME
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cairn-pack
+          path: |
+            release/Cairn-Pack-subnautica-*.zip
+            release/pack-index.json
+            .github/cairn/game/game.json
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = @("release/Cairn-Pack-subnautica-$env:GITHUB_REF_NAME.zip", 'release/pack-index.json') + (Get-ChildItem .github/cairn/game -File | ForEach-Object { $_.FullName })
+          $flags = @()
+          if ((Get-Content RELEASE_CHANNEL -Raw).Trim() -eq 'beta') { $flags += '--prerelease' }
+          gh release create $env:GITHUB_REF_NAME @assets --title $env:GITHUB_REF_NAME --notes-file notes.md --verify-tag @flags
